@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBBA · Painel de Administração</title>
+<style>
+  :root {
+    --azul-escuro: #1A3A6B;
+    --azul-medio: #2B5CA8;
+    --azul-claro: #E6F1FB;
+    --dourado: #C9A84C;
+    --branco: #FFFFFF;
+    --cinza-texto: #4A5568;
+    --cinza-borda: #D9E2EC;
+    --vermelho: #C0392B;
+    --verde: #2E7D46;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--azul-claro);
+    color: var(--azul-escuro);
+  }
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  header {
+    background: var(--azul-escuro);
+    color: var(--branco);
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header .marca { font-weight: 700; font-size: 18px; }
+  header .marca span { color: var(--dourado); }
+  header button {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: var(--branco);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  nav {
+    display: flex;
+    background: var(--branco);
+    border-bottom: 1px solid var(--cinza-borda);
+    padding: 0 20px;
+    overflow-x: auto;
+  }
+  nav button {
+    background: none;
+    border: none;
+    padding: 14px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cinza-texto);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+  }
+  nav button.ativo { color: var(--azul-escuro); border-bottom-color: var(--dourado); }
+
+  main { flex: 1; padding: 24px; max-width: 900px; width: 100%; margin: 0 auto; }
+
+  .cartao {
+    background: var(--branco);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(26,58,107,0.06);
+    margin-bottom: 18px;
+  }
+
+  /* --- login --- */
+  .login-box { max-width: 360px; margin: 60px auto 0; }
+  .login-box h1 { font-size: 20px; margin-bottom: 18px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; margin-top: 14px; }
+  input[type=text], input[type=password], input[type=date], select {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1.5px solid var(--cinza-borda);
+    border-radius: 8px;
+    font-size: 15px;
+    color: var(--azul-escuro);
+  }
+  input:focus, select:focus { outline: 2px solid var(--azul-medio); border-color: var(--azul-medio); }
+  .btn-primario {
+    background: var(--azul-medio);
+    color: var(--branco);
+    border: none;
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-secundario {
+    background: var(--branco);
+    color: var(--azul-medio);
+    border: 1.5px solid var(--azul-medio);
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-perigo { color: var(--vermelho); border-color: var(--vermelho); background: var(--branco); }
+  .btn-bloco { width: 100%; margin-top: 18px; }
+  .erro { background: #FDEDEC; color: var(--vermelho); padding: 10px 12px; border-radius: 8px; font-size: 14px; margin-top: 14px; }
+
+  /* --- Hoje --- */
+  .linha-func {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #EEF3FA;
+  }
+  .linha-func:last-child { border-bottom: none; }
+  .linha-func .nome-func { font-weight: 600; font-size: 15px; }
+  .linha-func .funcao-func { font-size: 12px; color: var(--cinza-texto); }
+  .badge {
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .badge.completo { background: #E4F5E9; color: var(--verde); }
+  .badge.pendente { background: #FDF3E3; color: var(--dourado); }
+  .badge.folga { background: #EEF1F6; color: var(--cinza-texto); }
+
+  /* --- tabela registros --- */
+  .filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
+  .filtros > div { flex: 1; min-width: 140px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 8px; color: var(--cinza-texto); font-size: 12px; text-transform: uppercase; border-bottom: 2px solid var(--cinza-borda); }
+  td { padding: 8px; border-bottom: 1px solid #EEF3FA; }
+  td input { padding: 6px 8px; font-size: 13px; }
+  .acoes-linha { display: flex; gap: 6px; }
+  .acoes-linha button { padding: 5px 10px; font-size: 12px; }
+  .vazio { color: var(--cinza-texto); font-size: 14px; text-align: center; padding: 20px 0; }
+
+  /* --- feriados --- */
+  .form-feriado { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 18px; }
+  .form-feriado > div { flex: 1; min-width: 140px; }
+  .item-feriado { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #EEF3FA; }
+  .item-feriado:last-child { border-bottom: none; }
+  .item-feriado .data-feriado { font-weight: 700; margin-right: 10px; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--verde); color: var(--branco); padding: 12px 20px;
+    border-radius: 8px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.2); z-index: 50;
+  }
+  .toast.erro-toast { background: var(--vermelho); }
+  .carregando { text-align: center; color: var(--cinza-texto); padding: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ====== CONFIGURAÇÃO ======
+// Use a MESMA URL do Apps Script já usada no app_ponto.html
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYTQJHUZj4pIL8tUp-rUk05VrEd6ldVJVnOM9bBCDRz8PRN-L_tHoEIw2nptClR0Sf/exec';
+
+// ====== ESTADO EM MEMÓRIA ======
+let sessaoAdmin = null;
+let abaAtiva = 'hoje';
+let mensagemErro = '';
+let carregando = false;
+
+let statusHoje = null;
+let listaFuncionarios = [];
+let filtroFuncionario = '';
+let filtroDataInicio = '';
+let filtroDataFim = '';
+let registros = [];
+let editandoId = null;
+
+let feriados = [];
+
+const app = document.getElementById('app');
+
+function render() {
+  if (!sessaoAdmin) { renderLogin(); return; }
+  renderPainel();
+}
+
+// ---------- LOGIN ----------
+function renderLogin() {
+  app.innerHTML = `
+    <header><div class="marca">OBBA <span>Administração</span></div></header>
+    <main>
+      <div class="cartao login-box">
+        <h1>Painel de Administração</h1>
+        <label for="input-usuario">Usuário</label>
+        <input type="text" id="input-usuario" autocomplete="off">
+        <label for="input-senha">Senha</label>
+        <input type="password" id="input-senha" autocomplete="off">
+        ${mensagemErro ? `<div class="erro">${mensagemErro}</div>` : ''}
+        <button class="btn-primario btn-bloco" id="btn-entrar" ${carregando ? 'disabled' : ''}>${carregando ? 'Entrando...' : 'Entrar'}</button>
+      </div>
+    </main>
+  `;
+  document.getElementById('btn-entrar').addEventListener('click', tentarLoginAdmin);
+  document.getElementById('input-senha').addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarLoginAdmin(); });
+}
+
+async function tentarLoginAdmin() {
+  const usuario = document.getElementById('input-usuario').value.trim();
+  const senha = document.getElementById('input-senha').value.trim();
+  if (!usuario || !senha) { mensagemErro = 'Preencha usuário e senha.'; render(); return; }
+  carregando = true; mensagemErro = ''; render();
+  try {
+    const resp = await chamarBackend({ action: 'loginAdmin', usuario, senha });
+    if (resp.ok) {
+      sessaoAdmin = resp.admin;
+      await Promise.all([carregarStatusHoje(), carregarFuncionarios()]);
+    } else {
+      mensagemErro = resp.erro || 'Não foi possível entrar.';
+    }
+  } catch (err) {
+    mensagemErro = 'Erro de conexão. Tente novamente.';
+  }
+  carregando = false; render();
+}
+
+// ---------- SHELL DO PAINEL ----------
+function renderPainel() {
+  app.innerHTML = `
+    <header>
+      <div class="marca">OBBA <span>Administração</span></div>
+      <button id="btn-sair">Sair</button>
+    </header>
+    <nav>
+      <button data-aba="hoje" class="${abaAtiva === 'hoje' ? 'ativo' : ''}">Hoje</button>
+      <button data-aba="registros" class="${abaAtiva === 'registros' ? 'ativo' : ''}">Registros</button>
+      <button data-aba="feriados" class="${abaAtiva === 'feriados' ? 'ativo' : ''}">Feriados</button>
+    </nav>
+    <main id="conteudo-aba"></main>
+  `;
+  document.getElementById('btn-sair').addEventListener('click', () => { sessaoAdmin = null; render(); });
+  document.querySelectorAll('nav button').forEach(btn => {
+    btn.addEventListener('click', () => { abaAtiva = btn.dataset.aba; carregarAbaAtiva(); });
+  });
+  renderConteudoAba();
+}
+
+async function carregarAbaAtiva() {
+  if (abaAtiva === 'hoje') await carregarStatusHoje();
+  if (abaAtiva === 'registros') await buscarRegistros();
+  if (abaAtiva === 'feriados') await carregarFeriados();
+  render();
+}
+
+function renderConteudoAba() {
+  const el = document.getElementById('conteudo-aba');
+  if (!el) return;
+  if (abaAtiva === 'hoje') el.innerHTML = htmlAbaHoje();
+  if (abaAtiva === 'registros') el.innerHTML = htmlAbaRegistros();
+  if (abaAtiva === 'feriados') el.innerHTML = htmlAbaFeriados();
+  ligarEventosDaAba();
+}
+
+// ---------- ABA HOJE ----------
+async function carregarStatusHoje() {
+  try {
+    const resp = await chamarBackend({ action: 'statusGeralHoje' });
+    if (resp.ok) statusHoje = resp;
+  } catch (err) { mostrarToast('Erro ao carregar status de hoje.', true); }
+}
+
+function htmlAbaHoje() {
+  if (!statusHoje) return '<div class="carregando">Carregando...</div>';
+  const linhas = statusHoje.funcionarios.map(f => {
+    let badge = '<span class="badge pendente">Pendente</span>';
+    if (f.ehFolga) badge = '<span class="badge folga">Folga</span>';
+    else if (f.diaCompleto) badge = '<span class="badge completo">Completo</span>';
+    const marcacoes = f.marcacoesHoje.map(m => `${m.tipo} ${m.hora}`).join(' · ') || 'Nenhuma marcação ainda';
+    return `
+      <div class="linha-func">
+        <div>
+          <div class="nome-func">${f.nome} <span style="color:var(--cinza-texto);font-weight:400;">(cód. ${f.codigo})</span></div>
+          <div class="funcao-func">${f.funcao || ''} — ${marcacoes}</div>
+        </div>
+        ${badge}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="cartao">
+      <h2 style="font-size:15px;margin-bottom:14px;">Status de hoje (${statusHoje.dataHoje})</h2>
+      ${linhas || '<div class="vazio">Nenhum funcionário ativo cadastrado.</div>'}
+    </div>`;
+}
+
+// ---------- ABA REGISTROS ----------
+async function carregarFuncionarios() {
+  try {
+    const resp = await chamarBackend({ action: 'listarFuncionarios' });
+    if (resp.ok) listaFuncionarios = resp.funcionarios;
+  } catch (err) { /* silencioso, não é crítico */ }
+}
+
+async function buscarRegistros() {
+  carregando = true; render();
+  try {
+    const resp = await chamarBackend({ action: 'listarRegistros', codigo: filtroFuncionario, dataInicio: filtroDataInicio, dataFim: filtroDataFim });
+    if (resp.ok) registros = resp.registros;
+  } catch (err) { mostrarToast('Erro ao buscar registros.', true); }
+  carregando = false; render();
+}
+
+function htmlAbaRegistros() {
+  const opcoesFunc = listaFuncionarios.map(f => `<option value="${f.codigo}" ${filtroFuncionario === f.codigo ? 'selected' : ''}>${f.nome}</option>`).join('');
+
+  const linhasTabela = registros.map(r => {
+    const emEdicao = editandoId === r.id;
+    if (emEdicao) {
+      return `
+        <tr>
+          <td>${r.nome}</td>
+          <td><input type="text" id="edit-data" value="${r.data}" placeholder="dd/MM/aaaa"></td>
+          <td><input type="text" id="edit-tipo" value="${r.tipo}"></td>
+          <td><input type="text" id="edit-hora" value="${r.hora}" placeholder="HH:mm:ss"></td>
+          <td>
+            <div class="acoes-linha">
+              <button class="btn-primario" data-salvar="${r.id}">Salvar</button>
+              <button class="btn-secundario" data-cancelar="1">Cancelar</button>
+            </div>
+          </td>
+        </tr>`;
+    }
+    return `
+      <tr>
+        <td>${r.nome}</td>
+        <td>${r.data}</td>
+        <td>${r.tipo}</td>
+        <td>${r.hora}</td>
+        <td>
+          <div class="acoes-linha">
+            <button class="btn-secundario" data-editar="${r.id}">Editar</button>
+            <button class="btn-perigo" data-excluir="${r.id}">Excluir</button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="cartao">
+      <div class="filtros">
+        <div>
+          <label for="filtro-func">Funcionário</label>
+          <select id="filtro-func"><option value="">Todos</option>${opcoesFunc}</select>
+        </div>
+        <div>
+          <label for="filtro-inicio">De</label>
+          <input type="text" id="filtro-inicio" placeholder="dd/MM/aaaa" value="${filtroDataInicio}">
+        </div>
+        <div>
+          <label for="filtro-fim">Até</label>
+          <input type="text" id="filtro-fim" placeholder="dd/MM/aaaa" value="${filtroDataFim}">
+        </div>
+        <button class="btn-primario" id="btn-buscar">${carregando ? 'Buscando...' : 'Buscar'}</button>
+      </div>
+      <table>
+        <thead><tr><th>Funcionário</th><th>Data</th><th>Tipo</th><th>Hora</th><th>Ações</th></tr></thead>
+        <tbody>${linhasTabela || '<tr><td colspan="5" class="vazio">Nenhum registro encontrado.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+// ---------- ABA FERIADOS ----------
+async function carregarFeriados() {
+  try {
+    const resp = await chamarBackend({ action: 'listarFeriados' });
+    if (resp.ok) feriados = resp.feriados;
+  } catch (err) { mostrarToast('Erro ao carregar feriados.', true); }
+}
+
+function htmlAbaFeriados() {
+  const itens = feriados.map(f => `
+    <div class="item-feriado">
+      <div><span class="data-feriado">${f.data}</span>${f.descricao || ''}</div>
+      <button class="btn-perigo" data-remover-feriado="${f.data}">Remover</button>
+    </div>
+  `).join('');
+
+  return `
+    <div class="cartao">
+      <h2 style="font-size:15px;margin-bottom:14px;">Cadastrar feriado</h2>
+      <div class="form-feriado">
+        <div>
+          <label for="novo-feriado-data">Data</label>
+          <input type="text" id="novo-feriado-data" placeholder="dd/MM/aaaa">
+        </div>
+        <div>
+          <label for="novo-feriado-desc">Descrição</label>
+          <input type="text" id="novo-feriado-desc" placeholder="Ex: Feriado Municipal">
+        </div>
+        <button class="btn-primario" id="btn-add-feriado">Adicionar</button>
+      </div>
+      <h2 style="font-size:15px;margin:18px 0 8px;">Feriados cadastrados</h2>
+      ${itens || '<div class="vazio">Nenhum feriado cadastrado ainda.</div>'}
+    </div>`;
+}
+
+// ---------- EVENTOS ----------
+function ligarEventosDaAba() {
+  if (abaAtiva === 'registros') {
+    const selFunc = document.getElementById('filtro-func');
+    if (selFunc) selFunc.addEventListener('change', () => { filtroFuncionario = selFunc.value; });
+    const inpInicio = document.getElementById('filtro-inicio');
+    if (inpInicio) inpInicio.addEventListener('input', () => { filtroDataInicio = inpInicio.value; });
+    const inpFim = document.getElementById('filtro-fim');
+    if (inpFim) inpFim.addEventListener('input', () => { filtroDataFim = inpFim.value; });
+    const btnBuscar = document.getElementById('btn-buscar');
+    if (btnBuscar) btnBuscar.addEventListener('click', buscarRegistros);
+
+    document.querySelectorAll('[data-editar]').forEach(b => b.addEventListener('click', () => { editandoId = b.dataset.editar; render(); }));
+    document.querySelectorAll('[data-cancelar]').forEach(b => b.addEventListener('click', () => { editandoId = null; render(); }));
+    document.querySelectorAll('[data-salvar]').forEach(b => b.addEventListener('click', () => salvarEdicao(b.dataset.salvar)));
+    document.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click', () => excluirRegistroConfirma(b.dataset.excluir)));
+  }
+
+  if (abaAtiva === 'feriados') {
+    const btnAdd = document.getElementById('btn-add-feriado');
+    if (btnAdd) btnAdd.addEventListener('click', adicionarFeriadoNovo);
+    document.querySelectorAll('[data-remover-feriado]').forEach(b => b.addEventListener('click', () => removerFeriadoConfirma(b.dataset.removerFeriado)));
+  }
+}
+
+async function salvarEdicao(id) {
+  const novaData = document.getElementById('edit-data').value.trim();
+  const novoTipo = document.getElementById('edit-tipo').value.trim();
+  const novaHora = document.getElementById('edit-hora').value.trim();
+  try {
+    const resp = await chamarBackend({ action: 'editarRegistro', id, novaData, novoTipo, novaHora });
+    if (resp.ok) { mostrarToast('Registro atualizado.'); editandoId = null; await buscarRegistros(); }
+    else mostrarToast(resp.erro || 'Erro ao salvar.', true);
+  } catch (err) { mostrarToast('Erro de conexão.', true); }
+  render();
+}
+
+async function excluirRegistroConfirma(id) {
+  if (!confirm('Excluir este registro de ponto? Essa ação não pode ser desfeita.')) return;
+  try {
+    const resp = await chamarBackend({ action: 'excluirRegistro', id });
+    if (resp.ok) { mostrarToast('Registro excluído.'); await buscarRegistros(); }
+    else mostrarToast(resp.erro || 'Erro ao excluir.', true);
+  } catch (err) { mostrarToast('Erro de conexão.', true); }
+  render();
+}
+
+async function adicionarFeriadoNovo() {
+  const data = document.getElementById('novo-feriado-data').value.trim();
+  const descricao = document.getElementById('novo-feriado-desc').value.trim();
+  if (!data) { mostrarToast('Informe a data do feriado.', true); return; }
+  try {
+    const resp = await chamarBackend({ action: 'adicionarFeriado', data, descricao });
+    if (resp.ok) { mostrarToast('Feriado adicionado.'); await carregarFeriados(); }
+    else mostrarToast(resp.erro || 'Erro ao adicionar.', true);
+  } catch (err) { mostrarToast('Erro de conexão.', true); }
+  render();
+}
+
+async function removerFeriadoConfirma(data) {
+  if (!confirm('Remover o feriado de ' + data + '?')) return;
+  try {
+    const resp = await chamarBackend({ action: 'removerFeriado', data });
+    if (resp.ok) { mostrarToast('Feriado removido.'); await carregarFeriados(); }
+    else mostrarToast(resp.erro || 'Erro ao remover.', true);
+  } catch (err) { mostrarToast('Erro de conexão.', true); }
+  render();
+}
+
+// ---------- BACKEND ----------
+async function chamarBackend(payload) {
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  return await resp.json();
+}
+
+// ---------- TOAST ----------
+function mostrarToast(texto, isErro) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErro ? ' erro-toast' : '');
+  el.textContent = texto;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>OBBA · Ponto</title>
+<style>
+  :root {
+    --azul-escuro: #1A3A6B;
+    --azul-medio: #2B5CA8;
+    --azul-claro: #E6F1FB;
+    --dourado: #C9A84C;
+    --branco: #FFFFFF;
+    --cinza-texto: #4A5568;
+    --vermelho: #C0392B;
+    --verde: #2E7D46;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--azul-claro);
+    color: var(--azul-escuro);
+  }
+  #app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--azul-claro);
+  }
+  header {
+    background: var(--azul-escuro);
+    color: var(--branco);
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header .marca {
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+  }
+  header .marca span { color: var(--dourado); }
+  header button {
+    background: none;
+    border: 1px solid rgba(255,255,255,0.4);
+    color: var(--branco);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  main {
+    flex: 1;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* --- Tela de login --- */
+  .login-box {
+    background: var(--branco);
+    border-radius: 12px;
+    padding: 28px 24px;
+    margin-top: 40px;
+    box-shadow: 0 2px 12px rgba(26,58,107,0.08);
+  }
+  .login-box h1 {
+    font-size: 20px;
+    margin-bottom: 4px;
+    color: var(--azul-escuro);
+  }
+  .login-box p.sub {
+    font-size: 14px;
+    color: var(--cinza-texto);
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--azul-escuro);
+    margin-bottom: 6px;
+    margin-top: 14px;
+  }
+  input[type=text], input[type=password] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #C9D6E8;
+    border-radius: 8px;
+    font-size: 16px;
+    color: var(--azul-escuro);
+  }
+  input:focus { outline: 2px solid var(--azul-medio); border-color: var(--azul-medio); }
+  .btn-primario {
+    width: 100%;
+    background: var(--azul-medio);
+    color: var(--branco);
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    margin-top: 22px;
+    cursor: pointer;
+  }
+  .btn-primario:disabled { opacity: 0.6; cursor: default; }
+  .erro {
+    background: #FDEDEC;
+    color: var(--vermelho);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    margin-top: 14px;
+  }
+
+  /* --- Tela principal --- */
+  .cartao-relogio {
+    background: var(--branco);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(26,58,107,0.08);
+  }
+  .cartao-relogio .nome { font-size: 15px; color: var(--cinza-texto); }
+  .cartao-relogio .funcao { font-size: 13px; color: var(--cinza-texto); margin-bottom: 10px; }
+  .cartao-relogio .hora {
+    font-size: 40px;
+    font-weight: 700;
+    color: var(--azul-escuro);
+    letter-spacing: 1px;
+  }
+  .cartao-relogio .data { font-size: 14px; color: var(--cinza-texto); margin-top: 2px; }
+
+  .cartao-marcacao {
+    background: var(--branco);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 2px 12px rgba(26,58,107,0.08);
+  }
+  .cartao-marcacao .rotulo {
+    font-size: 13px;
+    color: var(--cinza-texto);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+  }
+  .btn-marcar {
+    width: 100%;
+    background: var(--azul-escuro);
+    color: var(--branco);
+    border: none;
+    padding: 22px;
+    border-radius: 10px;
+    font-size: 19px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-marcar:active { background: var(--azul-medio); }
+  .btn-marcar:disabled { opacity: 0.5; }
+  .msg-completo {
+    color: var(--verde);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .msg-folga {
+    color: var(--cinza-texto);
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .lista-marcacoes {
+    background: var(--branco);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 12px rgba(26,58,107,0.08);
+  }
+  .lista-marcacoes h2 {
+    font-size: 14px;
+    color: var(--azul-escuro);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .item-marcacao {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #EEF3FA;
+    font-size: 15px;
+  }
+  .item-marcacao:last-child { border-bottom: none; }
+  .item-marcacao .tipo { color: var(--cinza-texto); }
+  .item-marcacao .hora-item { font-weight: 700; color: var(--azul-escuro); }
+  .vazio { color: var(--cinza-texto); font-size: 14px; text-align: center; padding: 8px 0; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--verde);
+    color: var(--branco);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    z-index: 50;
+  }
+  .toast.erro-toast { background: var(--vermelho); }
+
+  .carregando { text-align: center; color: var(--cinza-texto); padding: 20px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ====== CONFIGURAÇÃO ======
+// Cole aqui a URL do App da Web gerada no passo "Implantar" do Apps Script
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYTQJHUZj4pIL8tUp-rUk05VrEd6ldVJVnOM9bBCDRz8PRN-L_tHoEIw2nptClR0Sf/exec';
+
+// ====== ESTADO EM MEMÓRIA (sem localStorage) ======
+let sessao = null; // { codigo, nome, funcao }
+let statusAtual = null;
+let mensagemErro = '';
+let carregando = false;
+
+const app = document.getElementById('app');
+
+function render() {
+  if (!sessao) {
+    renderLogin();
+  } else {
+    renderPrincipal();
+  }
+}
+
+// ---------- LOGIN ----------
+function renderLogin() {
+  app.innerHTML = `
+    <header>
+      <div class="marca">OBBA <span>Ponto</span></div>
+    </header>
+    <main>
+      <div class="login-box">
+        <h1>Bater ponto</h1>
+        <p class="sub">Digite seu código de funcionário e seu PIN</p>
+        <label for="input-codigo">Código do funcionário</label>
+        <input type="text" id="input-codigo" inputmode="numeric" placeholder="Ex: 8" autocomplete="off">
+        <label for="input-pin">PIN</label>
+        <input type="password" id="input-pin" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+        ${mensagemErro ? `<div class="erro">${mensagemErro}</div>` : ''}
+        <button class="btn-primario" id="btn-entrar" ${carregando ? 'disabled' : ''}>${carregando ? 'Entrando...' : 'Entrar'}</button>
+      </div>
+    </main>
+  `;
+  document.getElementById('btn-entrar').addEventListener('click', tentarLogin);
+  document.getElementById('input-pin').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') tentarLogin();
+  });
+}
+
+async function tentarLogin() {
+  const codigo = document.getElementById('input-codigo').value.trim();
+  const pin = document.getElementById('input-pin').value.trim();
+  if (!codigo || !pin) {
+    mensagemErro = 'Preencha código e PIN.';
+    render();
+    return;
+  }
+  carregando = true;
+  mensagemErro = '';
+  render();
+
+  try {
+    const resp = await chamarBackend({ action: 'login', codigo, pin });
+    if (resp.ok) {
+      sessao = resp.funcionario;
+      mensagemErro = '';
+      await carregarStatus();
+    } else {
+      mensagemErro = resp.erro || 'Não foi possível entrar.';
+    }
+  } catch (err) {
+    mensagemErro = 'Erro de conexão. Verifique sua internet e tente novamente.';
+  }
+  carregando = false;
+  render();
+}
+
+// ---------- TELA PRINCIPAL ----------
+async function carregarStatus() {
+  try {
+    const resp = await chamarBackend({ action: 'status', codigo: sessao.codigo });
+    if (resp.ok) {
+      statusAtual = resp;
+    }
+  } catch (err) {
+    mensagemErro = 'Erro ao carregar status do dia.';
+  }
+}
+
+function renderPrincipal() {
+  const agora = new Date();
+  const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dataFormatada = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+
+  let blocoMarcacao = '<div class="carregando">Carregando...</div>';
+  let blocoLista = '';
+
+  if (statusAtual) {
+    if (statusAtual.ehFolga) {
+      blocoMarcacao = `
+        <div class="cartao-marcacao">
+          <div class="msg-folga">Hoje é domingo — dia de folga. Nenhuma marcação prevista.</div>
+        </div>`;
+    } else if (statusAtual.diaCompleto) {
+      blocoMarcacao = `
+        <div class="cartao-marcacao">
+          <div class="msg-completo">✓ Todas as marcações de hoje foram registradas.</div>
+        </div>`;
+    } else {
+      blocoMarcacao = `
+        <div class="cartao-marcacao">
+          <div class="rotulo">Próxima marcação</div>
+          <button class="btn-marcar" id="btn-marcar" ${carregando ? 'disabled' : ''}>
+            ${carregando ? 'Registrando...' : statusAtual.proximaMarcacao}
+          </button>
+        </div>`;
+    }
+
+    const itens = statusAtual.marcacoesHoje.map(m => `
+      <div class="item-marcacao">
+        <span class="tipo">${m.tipo}</span>
+        <span class="hora-item">${m.hora}</span>
+      </div>
+    `).join('');
+
+    blocoLista = `
+      <div class="lista-marcacoes">
+        <h2>Marcações de hoje</h2>
+        ${itens || '<div class="vazio">Nenhuma marcação ainda.</div>'}
+      </div>`;
+  }
+
+  app.innerHTML = `
+    <header>
+      <div class="marca">OBBA <span>Ponto</span></div>
+      <button id="btn-sair">Sair</button>
+    </header>
+    <main>
+      <div class="cartao-relogio">
+        <div class="nome">${sessao.nome}</div>
+        <div class="funcao">${sessao.funcao || ''}</div>
+        <div class="hora" id="relogio-vivo">${horaFormatada}</div>
+        <div class="data">${dataFormatada}</div>
+      </div>
+      ${blocoMarcacao}
+      ${blocoLista}
+    </main>
+  `;
+
+  document.getElementById('btn-sair').addEventListener('click', () => {
+    sessao = null;
+    statusAtual = null;
+    mensagemErro = '';
+    render();
+  });
+
+  const btnMarcar = document.getElementById('btn-marcar');
+  if (btnMarcar) btnMarcar.addEventListener('click', registrarMarcacao);
+
+  iniciarRelogioVivo();
+}
+
+let intervaloRelogio = null;
+function iniciarRelogioVivo() {
+  if (intervaloRelogio) clearInterval(intervaloRelogio);
+  intervaloRelogio = setInterval(() => {
+    const el = document.getElementById('relogio-vivo');
+    if (!el) { clearInterval(intervaloRelogio); return; }
+    el.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }, 1000);
+}
+
+// ---------- REGISTRAR MARCAÇÃO ----------
+async function registrarMarcacao() {
+  if (!statusAtual || !statusAtual.proximaMarcacao) return;
+  const tipo = statusAtual.proximaMarcacao;
+  carregando = true;
+  render();
+
+  obterLocalizacao(async (lat, lng) => {
+    try {
+      const resp = await chamarBackend({ action: 'registrar', codigo: sessao.codigo, tipo, latitude: lat, longitude: lng });
+      carregando = false;
+      if (resp.ok) {
+        mostrarToast(`${resp.tipo} registrada às ${resp.hora}`);
+        await carregarStatus();
+      } else {
+        mostrarToast(resp.erro || 'Erro ao registrar.', true);
+      }
+      render();
+    } catch (err) {
+      carregando = false;
+      mostrarToast('Erro de conexão ao registrar ponto.', true);
+      render();
+    }
+  });
+}
+
+function obterLocalizacao(callback) {
+  if (!navigator.geolocation) {
+    callback('', '');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => callback(pos.coords.latitude, pos.coords.longitude),
+    () => callback('', ''), // se o funcionário negar permissão, registra sem coordenadas
+    { timeout: 8000 }
+  );
+}
+
+// ---------- BACKEND ----------
+async function chamarBackend(payload) {
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // evita preflight CORS
+    body: JSON.stringify(payload)
+  });
+  return await resp.json();
+}
+
+// ---------- TOAST ----------
+function mostrarToast(texto, isErro) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErro ? ' erro-toast' : '');
+  el.textContent = texto;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3000);
+}
+
+render();
+</script>
+</body>
+</html>
