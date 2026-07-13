@@ -248,12 +248,14 @@
 // ====== CONFIGURAÇÃO ======
 // Cole aqui a URL do App da Web gerada no passo "Implantar" do Apps Script
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYTQJHUZj4pIL8tUp-rUk05VrEd6ldVJVnOM9bBCDRz8PRN-L_tHoEIw2nptClR0Sf/exec';
+const SESSAO_STORAGE_KEY = 'obba_funcionario_sessao';
 
-// ====== ESTADO EM MEMÓRIA (sem localStorage) ======
+// ====== ESTADO EM MEMÓRIA ======
 let sessao = null; // { codigo, nome, funcao }
 let statusAtual = null;
 let mensagemErro = '';
 let carregando = false;
+let inicializandoSessao = true;
 
 const app = document.getElementById('app');
 
@@ -270,11 +272,28 @@ function htmlMarca(subtitulo) {
 }
 
 function render() {
+  if (inicializandoSessao) {
+    renderInicializacao();
+    return;
+  }
   if (!sessao) {
     renderLogin();
   } else {
     renderPrincipal();
   }
+}
+
+function renderInicializacao() {
+  app.innerHTML = `
+    <header>
+      ${htmlMarca('Ponto do funcionário')}
+    </header>
+    <main>
+      <div class="login-box">
+        <div class="carregando">Entrando automaticamente...</div>
+      </div>
+    </main>
+  `;
 }
 
 // ---------- LOGIN ----------
@@ -302,6 +321,45 @@ function renderLogin() {
   });
 }
 
+function salvarSessaoLocal() {
+  try {
+    if (sessao) localStorage.setItem(SESSAO_STORAGE_KEY, JSON.stringify(sessao));
+  } catch (err) {
+    // Se o navegador bloquear storage, o app continua funcionando sem login automático.
+  }
+}
+
+function limparSessaoLocal() {
+  try {
+    localStorage.removeItem(SESSAO_STORAGE_KEY);
+  } catch (err) {
+    // ignora
+  }
+}
+
+async function restaurarSessaoLocal() {
+  try {
+    const bruto = localStorage.getItem(SESSAO_STORAGE_KEY);
+    if (!bruto) return false;
+
+    const sessaoSalva = JSON.parse(bruto);
+    if (!sessaoSalva || !sessaoSalva.codigo) return false;
+
+    sessao = sessaoSalva;
+    const resp = await chamarBackend({ action: 'status', codigo: sessao.codigo });
+    if (!resp.ok) throw new Error(resp.erro || 'Sessão inválida.');
+
+    statusAtual = resp;
+    mensagemErro = '';
+    return true;
+  } catch (err) {
+    sessao = null;
+    statusAtual = null;
+    limparSessaoLocal();
+    return false;
+  }
+}
+
 async function tentarLogin() {
   const codigo = document.getElementById('input-codigo').value.trim();
   const pin = document.getElementById('input-pin').value.trim();
@@ -319,6 +377,7 @@ async function tentarLogin() {
     if (resp.ok) {
       sessao = resp.funcionario;
       mensagemErro = '';
+      salvarSessaoLocal();
       await carregarStatus();
     } else {
       mensagemErro = resp.erro || 'Não foi possível entrar.';
@@ -403,6 +462,7 @@ function renderPrincipal() {
   `;
 
   document.getElementById('btn-sair').addEventListener('click', () => {
+    limparSessaoLocal();
     sessao = null;
     statusAtual = null;
     mensagemErro = '';
@@ -482,7 +542,13 @@ function mostrarToast(texto, isErro) {
   setTimeout(() => el.remove(), 3000);
 }
 
-render();
+async function iniciar() {
+  await restaurarSessaoLocal();
+  inicializandoSessao = false;
+  render();
+}
+
+iniciar();
 </script>
 </body>
 </html>
