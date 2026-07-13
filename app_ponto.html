@@ -33,17 +33,40 @@
   header {
     background: var(--azul-escuro);
     color: var(--branco);
-    padding: 20px 24px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
   }
-  header .marca {
-    font-weight: 700;
-    font-size: 18px;
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .marca img {
+    height: 40px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+    background: rgba(255,255,255,0.96);
+    border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .marca-texto {
+    min-width: 0;
+  }
+  .marca-texto strong {
+    display: block;
+    font-size: 16px;
     letter-spacing: 0.5px;
   }
-  header .marca span { color: var(--dourado); }
+  .marca-texto span {
+    display: block;
+    font-size: 12px;
+    color: rgba(255,255,255,0.82);
+  }
   header button {
     background: none;
     border: 1px solid rgba(255,255,255,0.4);
@@ -234,6 +257,18 @@ let carregando = false;
 
 const app = document.getElementById('app');
 
+function htmlMarca(subtitulo) {
+  return `
+    <div class="marca">
+      <img src="./assets/logo-obba.png" alt="Logo da OBBA">
+      <div class="marca-texto">
+        <strong>OBBA</strong>
+        <span>${subtitulo}</span>
+      </div>
+    </div>
+  `;
+}
+
 function render() {
   if (!sessao) {
     renderLogin();
@@ -246,7 +281,7 @@ function render() {
 function renderLogin() {
   app.innerHTML = `
     <header>
-      <div class="marca">OBBA <span>Ponto</span></div>
+      ${htmlMarca('Ponto do funcionário')}
     </header>
     <main>
       <div class="login-box">
@@ -352,7 +387,7 @@ function renderPrincipal() {
 
   app.innerHTML = `
     <header>
-      <div class="marca">OBBA <span>Ponto</span></div>
+      ${htmlMarca('Ponto do funcionário')}
       <button id="btn-sair">Sair</button>
     </header>
     <main>

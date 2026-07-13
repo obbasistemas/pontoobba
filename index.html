@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OBBA · Portal</title>
+  <title>OBBA · Acesso</title>
   <style>
     :root {
       --azul-escuro: #1A3A6B;
@@ -12,6 +12,9 @@
       --dourado: #C9A84C;
       --branco: #FFFFFF;
       --cinza-texto: #4A5568;
+      --cinza-borda: #D9E2EC;
+      --vermelho: #C0392B;
+      --sombra: 0 18px 50px rgba(26, 58, 107, 0.12);
     }
 
     * {
@@ -25,143 +28,315 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: linear-gradient(180deg, #eef5fd 0%, #dce9f7 100%);
       color: var(--azul-escuro);
+    }
+
+    .page {
+      min-height: 100vh;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
+      flex-direction: column;
     }
 
-    .container {
-      width: 100%;
-      max-width: 760px;
-      background: var(--branco);
-      border-radius: 18px;
-      box-shadow: 0 18px 50px rgba(26, 58, 107, 0.12);
-      overflow: hidden;
-    }
-
-    .hero {
+    header {
       background: var(--azul-escuro);
       color: var(--branco);
-      padding: 32px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
     }
 
     .marca {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
     }
 
-    .marca span {
-      color: var(--dourado);
+    .marca img {
+      height: 42px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      background: rgba(255,255,255,0.96);
+      border-radius: 8px;
+      padding: 4px 6px;
     }
 
-    h1 {
-      font-size: 30px;
-      margin-bottom: 10px;
-    }
-
-    .hero p {
+    .marca-texto strong {
+      display: block;
       font-size: 16px;
-      line-height: 1.5;
-      opacity: 0.95;
-      max-width: 560px;
+      letter-spacing: 0.5px;
     }
 
-    .content {
-      padding: 28px;
-      display: grid;
-      gap: 16px;
+    .marca-texto span {
+      display: block;
+      font-size: 12px;
+      color: rgba(255,255,255,0.82);
+    }
+
+    .btn-topbar {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.45);
+      color: var(--branco);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
     }
 
     .card {
-      border: 1px solid #dbe5f1;
-      border-radius: 14px;
-      padding: 22px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
+      width: 100%;
+      max-width: 460px;
+      background: var(--branco);
+      border-radius: 18px;
+      box-shadow: var(--sombra);
+      padding: 28px;
     }
 
-    .card h2 {
-      font-size: 20px;
+    .card h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
     }
 
     .card p {
       color: var(--cinza-texto);
+      line-height: 1.55;
+      margin-bottom: 22px;
+    }
+
+    .btn-entrar {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      text-decoration: none;
+      background: var(--azul-medio);
+      color: var(--branco);
+      border: none;
+      border-radius: 10px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .observacao {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--cinza-texto);
+      text-align: center;
+    }
+
+    .modal-fundo {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 24, 46, 0.52);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 40;
+    }
+
+    .modal-fundo.aberto {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 380px;
+      background: var(--branco);
+      border-radius: 16px;
+      box-shadow: var(--sombra);
+      padding: 24px;
+    }
+
+    .modal h2 {
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .modal p {
+      color: var(--cinza-texto);
+      margin-bottom: 18px;
       line-height: 1.5;
     }
 
-    .acoes {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
-
-    .btn {
-      display: inline-block;
-      text-decoration: none;
-      padding: 12px 18px;
-      border-radius: 10px;
+    label {
+      display: block;
+      font-size: 13px;
       font-weight: 600;
-      transition: 0.15s ease;
+      margin-bottom: 6px;
+      margin-top: 14px;
     }
 
-    .btn-primario {
-      background: var(--azul-medio);
-      color: var(--branco);
+    input {
+      width: 100%;
+      padding: 11px 13px;
+      border: 1.5px solid var(--cinza-borda);
+      border-radius: 8px;
+      font-size: 15px;
+      color: var(--azul-escuro);
     }
 
-    .btn-secundario {
+    input:focus {
+      outline: 2px solid var(--azul-medio);
+      border-color: var(--azul-medio);
+    }
+
+    .modal-acoes {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-acoes button {
+      flex: 1;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-cancelar {
       background: var(--branco);
       color: var(--azul-medio);
       border: 1.5px solid var(--azul-medio);
     }
 
-    .btn:hover {
-      transform: translateY(-1px);
-      opacity: 0.97;
+    .btn-confirmar {
+      background: var(--azul-medio);
+      color: var(--branco);
+      border: none;
     }
 
-    .rodape {
-      padding: 0 28px 28px;
-      color: var(--cinza-texto);
+    .erro {
+      margin-top: 14px;
+      background: #FDEDEC;
+      color: var(--vermelho);
+      padding: 10px 12px;
+      border-radius: 8px;
       font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <section class="hero">
-      <div class="marca">OBBA <span>Sistemas</span></div>
-      <h1>Sistema de Ponto</h1>
-      <p>Escolha a área que deseja acessar. Esta página inicial existe para que a Vercel encontre a rota principal do projeto sem retornar erro 404.</p>
-    </section>
-
-    <main class="content">
-      <article class="card">
-        <h2>App do funcionário</h2>
-        <p>Login por código e PIN para registrar Entrada, Saída Almoço, Volta Almoço e Saída Final com geolocalização.</p>
-        <div class="acoes">
-          <a class="btn btn-primario" href="./app_ponto.html">Abrir app</a>
+  <div class="page">
+    <header>
+      <div class="marca">
+        <img src="./assets/logo-obba.png" alt="Logo da OBBA">
+        <div class="marca-texto">
+          <strong>OBBA</strong>
+          <span>Sistema de ponto</span>
         </div>
-      </article>
+      </div>
+      <button class="btn-topbar" id="btn-admin-topbar">Administração</button>
+    </header>
 
-      <article class="card">
-        <h2>Painel administrativo</h2>
-        <p>Painel para acompanhar status do dia, consultar registros, editar marcações e gerenciar feriados.</p>
-        <div class="acoes">
-          <a class="btn btn-secundario" href="./painel_admin.html">Abrir painel</a>
-        </div>
-      </article>
+    <main>
+      <section class="card">
+        <h1>Área do funcionário</h1>
+        <p>Entre para registrar ponto com código e PIN. O acesso administrativo fica no botão da topbar.</p>
+        <a class="btn-entrar" href="./app_ponto.html">Entrar como funcionário</a>
+        <div class="observacao">Se você for administrador, use o botão “Administração” no topo da página.</div>
+      </section>
     </main>
+  </div>
 
-    <div class="rodape">
-      Se preferir, você também pode acessar diretamente `app_ponto.html` e `painel_admin.html`.
+  <div class="modal-fundo" id="modal-admin">
+    <div class="modal">
+      <h2>Entrar na administração</h2>
+      <p>Informe usuário e senha para acessar o painel administrativo.</p>
+      <label for="admin-usuario">Usuário</label>
+      <input type="text" id="admin-usuario" autocomplete="username">
+      <label for="admin-senha">Senha</label>
+      <input type="password" id="admin-senha" autocomplete="current-password">
+      <div class="erro" id="admin-erro" style="display:none;"></div>
+      <div class="modal-acoes">
+        <button class="btn-cancelar" id="btn-admin-cancelar">Cancelar</button>
+        <button class="btn-confirmar" id="btn-admin-entrar">Entrar</button>
+      </div>
     </div>
   </div>
+
+  <script>
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYTQJHUZj4pIL8tUp-rUk05VrEd6ldVJVnOM9bBCDRz8PRN-L_tHoEIw2nptClR0Sf/exec';
+    const AUTOLOGIN_STORAGE_KEY = 'obba_admin_autologin';
+
+    const modal = document.getElementById('modal-admin');
+    const erro = document.getElementById('admin-erro');
+    const inputUsuario = document.getElementById('admin-usuario');
+    const inputSenha = document.getElementById('admin-senha');
+    const btnEntrar = document.getElementById('btn-admin-entrar');
+
+    function abrirModalAdmin() {
+      erro.style.display = 'none';
+      erro.textContent = '';
+      inputUsuario.value = '';
+      inputSenha.value = '';
+      modal.classList.add('aberto');
+      setTimeout(() => inputUsuario.focus(), 20);
+    }
+
+    function fecharModalAdmin() {
+      modal.classList.remove('aberto');
+    }
+
+    async function entrarAdmin() {
+      const usuario = inputUsuario.value.trim();
+      const senha = inputSenha.value.trim();
+
+      if (!usuario || !senha) {
+        erro.textContent = 'Preencha usuário e senha.';
+        erro.style.display = 'block';
+        return;
+      }
+
+      btnEntrar.disabled = true;
+      btnEntrar.textContent = 'Entrando...';
+      erro.style.display = 'none';
+
+      try {
+        const resp = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'loginAdmin', usuario, senha })
+        });
+
+        const dados = await resp.json();
+        if (!dados.ok) {
+          erro.textContent = dados.erro || 'Não foi possível entrar.';
+          erro.style.display = 'block';
+          return;
+        }
+
+        sessionStorage.setItem(AUTOLOGIN_STORAGE_KEY, JSON.stringify({ usuario, senha }));
+        window.location.href = './painel_admin.html';
+      } catch (err) {
+        erro.textContent = 'Erro de conexão. Tente novamente.';
+        erro.style.display = 'block';
+      } finally {
+        btnEntrar.disabled = false;
+        btnEntrar.textContent = 'Entrar';
+      }
+    }
+
+    document.getElementById('btn-admin-topbar').addEventListener('click', abrirModalAdmin);
+    document.getElementById('btn-admin-cancelar').addEventListener('click', fecharModalAdmin);
+    document.getElementById('btn-admin-entrar').addEventListener('click', entrarAdmin);
+    modal.addEventListener('click', (e) => { if (e.target === modal) fecharModalAdmin(); });
+    inputSenha.addEventListener('keydown', (e) => { if (e.key === 'Enter') entrarAdmin(); });
+  </script>
 </body>
 </html>

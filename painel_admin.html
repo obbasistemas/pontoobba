@@ -24,17 +24,44 @@
     color: var(--azul-escuro);
   }
   #app { min-height: 100vh; display: flex; flex-direction: column; }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+  .marca img {
+    height: 42px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+    background: rgba(255,255,255,0.96);
+    border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .marca-texto {
+    min-width: 0;
+  }
+  .marca-texto strong {
+    display: block;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+  }
+  .marca-texto span {
+    display: block;
+    font-size: 12px;
+    color: rgba(255,255,255,0.82);
+  }
 
   header {
     background: var(--azul-escuro);
     color: var(--branco);
-    padding: 16px 28px;
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
   }
-  header .marca { font-weight: 700; font-size: 18px; }
-  header .marca span { color: var(--dourado); }
   header button {
     background: none;
     border: 1px solid rgba(255,255,255,0.4);
@@ -167,6 +194,7 @@
 // ====== CONFIGURAÇÃO ======
 // Use a MESMA URL do Apps Script já usada no app_ponto.html
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYTQJHUZj4pIL8tUp-rUk05VrEd6ldVJVnOM9bBCDRz8PRN-L_tHoEIw2nptClR0Sf/exec';
+const AUTOLOGIN_STORAGE_KEY = 'obba_admin_autologin';
 
 // ====== ESTADO EM MEMÓRIA ======
 let sessaoAdmin = null;
@@ -186,6 +214,18 @@ let feriados = [];
 
 const app = document.getElementById('app');
 
+function htmlMarca(subtitulo) {
+  return `
+    <div class="marca">
+      <img src="./assets/logo-obba.png" alt="Logo da OBBA">
+      <div class="marca-texto">
+        <strong>OBBA</strong>
+        <span>${subtitulo}</span>
+      </div>
+    </div>
+  `;
+}
+
 function render() {
   if (!sessaoAdmin) { renderLogin(); return; }
   renderPainel();
@@ -194,7 +234,7 @@ function render() {
 // ---------- LOGIN ----------
 function renderLogin() {
   app.innerHTML = `
-    <header><div class="marca">OBBA <span>Administração</span></div></header>
+    <header>${htmlMarca('Administração')}</header>
     <main>
       <div class="cartao login-box">
         <h1>Painel de Administração</h1>
@@ -211,6 +251,11 @@ function renderLogin() {
   document.getElementById('input-senha').addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarLoginAdmin(); });
 }
 
+async function concluirLoginAdmin(resp) {
+  sessaoAdmin = resp.admin;
+  await Promise.all([carregarStatusHoje(), carregarFuncionarios()]);
+}
+
 async function tentarLoginAdmin() {
   const usuario = document.getElementById('input-usuario').value.trim();
   const senha = document.getElementById('input-senha').value.trim();
@@ -219,8 +264,7 @@ async function tentarLoginAdmin() {
   try {
     const resp = await chamarBackend({ action: 'loginAdmin', usuario, senha });
     if (resp.ok) {
-      sessaoAdmin = resp.admin;
-      await Promise.all([carregarStatusHoje(), carregarFuncionarios()]);
+      await concluirLoginAdmin(resp);
     } else {
       mensagemErro = resp.erro || 'Não foi possível entrar.';
     }
@@ -230,11 +274,42 @@ async function tentarLoginAdmin() {
   carregando = false; render();
 }
 
+async function tentarAutoLoginAdmin() {
+  const dados = sessionStorage.getItem(AUTOLOGIN_STORAGE_KEY);
+  if (!dados) return false;
+
+  try {
+    const credenciais = JSON.parse(dados);
+    if (!credenciais.usuario || !credenciais.senha) throw new Error('Credenciais inválidas.');
+    carregando = true;
+    mensagemErro = '';
+    render();
+
+    const resp = await chamarBackend({ action: 'loginAdmin', usuario: credenciais.usuario, senha: credenciais.senha });
+    sessionStorage.removeItem(AUTOLOGIN_STORAGE_KEY);
+
+    if (!resp.ok) {
+      mensagemErro = resp.erro || 'Não foi possível entrar.';
+      carregando = false;
+      return false;
+    }
+
+    await concluirLoginAdmin(resp);
+    carregando = false;
+    render();
+    return true;
+  } catch (err) {
+    sessionStorage.removeItem(AUTOLOGIN_STORAGE_KEY);
+    carregando = false;
+    return false;
+  }
+}
+
 // ---------- SHELL DO PAINEL ----------
 function renderPainel() {
   app.innerHTML = `
     <header>
-      <div class="marca">OBBA <span>Administração</span></div>
+      ${htmlMarca('Administração')}
       <button id="btn-sair">Sair</button>
     </header>
     <nav>
@@ -244,7 +319,11 @@ function renderPainel() {
     </nav>
     <main id="conteudo-aba"></main>
   `;
-  document.getElementById('btn-sair').addEventListener('click', () => { sessaoAdmin = null; render(); });
+  document.getElementById('btn-sair').addEventListener('click', () => {
+    sessionStorage.removeItem(AUTOLOGIN_STORAGE_KEY);
+    sessaoAdmin = null;
+    render();
+  });
   document.querySelectorAll('nav button').forEach(btn => {
     btn.addEventListener('click', () => { abaAtiva = btn.dataset.aba; carregarAbaAtiva(); });
   });
@@ -498,7 +577,12 @@ function mostrarToast(texto, isErro) {
   setTimeout(() => el.remove(), 3000);
 }
 
-render();
+async function iniciar() {
+  const entrou = await tentarAutoLoginAdmin();
+  if (!entrou) render();
+}
+
+iniciar();
 </script>
 </body>
 </html>

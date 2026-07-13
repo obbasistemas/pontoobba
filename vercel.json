@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/app_ponto.html"
+    },
+    {
+      "source": "/painel",
+      "destination": "/painel_admin.html"
+    }
+  ]
+}
