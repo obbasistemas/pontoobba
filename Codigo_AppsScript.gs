@@ -19,6 +19,15 @@
  */
 
 const TIMEZONE = 'America/Sao_Paulo'; // mesmo horário de São Luís - MA (UTC-3)
+const EMPRESA_PADRAO = {
+  nome: 'OBBA - SOLUCAO EM GESTAO CONDOMINIAL LTD',
+  documento: '37.674.554/0002-65',
+  endereco: 'JERONIMO DE ALBUQUERQUE MARANHAO, 25',
+  bairro: 'VINHAIS I',
+  cidade: 'SAO LUIS',
+  uf: 'MA',
+  cep: '65-074-199'
+};
 
 const ABA_FUNCIONARIOS = 'Funcionarios';
 const ABA_JORNADAS = 'Jornadas';
@@ -108,6 +117,8 @@ function doPost(e) {
       resultado = listarFuncionarios();
     } else if (action === 'listarRegistros') {
       resultado = listarRegistros(body.codigo, body.dataInicio, body.dataFim);
+    } else if (action === 'gerarFolhaMensal') {
+      resultado = gerarFolhaMensal(body.codigo, body.competencia);
     } else if (action === 'editarRegistro') {
       resultado = editarRegistro(body.id, body.novaData, body.novoTipo, body.novaHora);
     } else if (action === 'excluirRegistro') {
@@ -133,13 +144,71 @@ function doPost(e) {
 
 // ---------- LÓGICA ----------
 
-function getFuncionarioPorCodigo(codigo) {
+function normalizarCabecalho(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function mapearCabecalhos(cabecalhos) {
+  const mapa = {};
+  for (let i = 0; i < cabecalhos.length; i++) {
+    mapa[normalizarCabecalho(cabecalhos[i])] = i;
+  }
+  return mapa;
+}
+
+function obterValorCabecalho(linha, mapa, nomes, padrao) {
+  for (let i = 0; i < nomes.length; i++) {
+    const idx = mapa[normalizarCabecalho(nomes[i])];
+    if (idx !== undefined) {
+      const valor = linha[idx];
+      if (valor !== '' && valor !== null && valor !== undefined) return valor;
+    }
+  }
+  return padrao || '';
+}
+
+function criarFuncionarioAPartirDaLinha(linha, mapa) {
+  return {
+    codigo: String(obterValorCabecalho(linha, mapa, ['Codigo'], linha[0])).trim(),
+    nome: obterValorCabecalho(linha, mapa, ['Nome'], linha[1]),
+    pin: String(obterValorCabecalho(linha, mapa, ['PIN'], linha[2])).trim(),
+    funcao: obterValorCabecalho(linha, mapa, ['Funcao'], linha[3]),
+    jornadaId: obterValorCabecalho(linha, mapa, ['JornadaID'], linha[4]),
+    status: obterValorCabecalho(linha, mapa, ['Status'], linha[5]),
+    departamento: obterValorCabecalho(linha, mapa, ['Depto / Setor / Secao', 'Depto', 'Departamento', 'Setor', 'Secao'], ''),
+    endereco: obterValorCabecalho(linha, mapa, ['Endereco'], ''),
+    bairro: obterValorCabecalho(linha, mapa, ['Bairro'], ''),
+    cidade: obterValorCabecalho(linha, mapa, ['Cidade'], ''),
+    estado: obterValorCabecalho(linha, mapa, ['Estado', 'UF'], ''),
+    cep: obterValorCabecalho(linha, mapa, ['CEP'], ''),
+    hrMes: obterValorCabecalho(linha, mapa, ['Hr/Mes', 'HrMes'], '220,00'),
+    ctps: obterValorCabecalho(linha, mapa, ['CTPS'], ''),
+    cbo: obterValorCabecalho(linha, mapa, ['CBO'], '')
+  };
+}
+
+function listarFuncionariosCompletos() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const aba = ss.getSheetByName(ABA_FUNCIONARIOS);
   const dados = aba.getDataRange().getValues();
+  if (dados.length < 2) return [];
+  const mapa = mapearCabecalhos(dados[0]);
+  const lista = [];
   for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][0]) === String(codigo)) {
-      return { codigo: String(dados[i][0]), nome: dados[i][1], pin: String(dados[i][2]), funcao: dados[i][3], jornadaId: dados[i][4], status: dados[i][5] };
+    lista.push(criarFuncionarioAPartirDaLinha(dados[i], mapa));
+  }
+  return lista;
+}
+
+function getFuncionarioPorCodigo(codigo) {
+  const lista = listarFuncionariosCompletos();
+  for (let i = 0; i < lista.length; i++) {
+    if (String(lista[i].codigo) === String(codigo)) {
+      return lista[i];
     }
   }
   return null;
@@ -286,12 +355,24 @@ function fazerLoginAdmin(usuario, senha) {
 }
 
 function listarFuncionarios() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const aba = ss.getSheetByName(ABA_FUNCIONARIOS);
-  const dados = aba.getDataRange().getValues();
+  const dados = listarFuncionariosCompletos();
   const lista = [];
-  for (let i = 1; i < dados.length; i++) {
-    lista.push({ codigo: String(dados[i][0]), nome: dados[i][1], funcao: dados[i][3], status: dados[i][5] });
+  for (let i = 0; i < dados.length; i++) {
+    lista.push({
+      codigo: String(dados[i].codigo),
+      nome: dados[i].nome,
+      funcao: dados[i].funcao,
+      status: dados[i].status,
+      departamento: dados[i].departamento || '',
+      endereco: dados[i].endereco || '',
+      bairro: dados[i].bairro || '',
+      cidade: dados[i].cidade || '',
+      estado: dados[i].estado || '',
+      cep: dados[i].cep || '',
+      hrMes: dados[i].hrMes || '',
+      ctps: dados[i].ctps || '',
+      cbo: dados[i].cbo || ''
+    });
   }
   return { ok: true, funcionarios: lista };
 }
@@ -320,6 +401,135 @@ function dataParaComparacao(dataStr) {
   const partes = String(dataStr).split('/');
   if (partes.length !== 3) return '';
   return partes[2] + partes[1] + partes[0]; // yyyy + MM + dd
+}
+
+function pad2(valor) {
+  return String(valor).padStart(2, '0');
+}
+
+function parseCompetencia(competencia) {
+  const agora = new Date();
+  let ano = agora.getFullYear();
+  let mes = agora.getMonth() + 1;
+
+  const texto = String(competencia || '').trim();
+  if (/^\d{4}-\d{2}$/.test(texto)) {
+    ano = Number(texto.slice(0, 4));
+    mes = Number(texto.slice(5, 7));
+  } else if (/^\d{2}\/\d{4}$/.test(texto)) {
+    mes = Number(texto.slice(0, 2));
+    ano = Number(texto.slice(3, 7));
+  }
+
+  if (!mes || mes < 1 || mes > 12) mes = agora.getMonth() + 1;
+  return { ano: ano, mes: mes, competencia: pad2(mes) + '/' + ano };
+}
+
+function montarLinhaFolhaDoDia(dataObj, dataStr, registrosDoDia) {
+  const linha = {
+    data: dataStr,
+    dia: pad2(dataObj.getDate()),
+    entrada1: '',
+    saida1: '',
+    entrada2: '',
+    saida2: '',
+    extras: '',
+    visto: ''
+  };
+
+  const registrosOrdenados = (registrosDoDia || []).slice().sort((a, b) => String(a.hora).localeCompare(String(b.hora)));
+  for (let i = 0; i < registrosOrdenados.length; i++) {
+    const registro = registrosOrdenados[i];
+    if (registro.tipo === 'Entrada' && !linha.entrada1) linha.entrada1 = registro.hora;
+    else if (registro.tipo === 'Saída Almoço' && !linha.saida1) linha.saida1 = registro.hora;
+    else if (registro.tipo === 'Volta Almoço' && !linha.entrada2) linha.entrada2 = registro.hora;
+    else if (registro.tipo === 'Saída Final') {
+      if (!linha.saida1 && dataObj.getDay() === 6) linha.saida1 = registro.hora;
+      else if (!linha.saida2) linha.saida2 = registro.hora;
+    }
+  }
+
+  if (ehFeriado(dataStr)) linha.visto = 'FERIADO';
+  else if (dataObj.getDay() === 6) linha.visto = 'SABADO';
+  else if (dataObj.getDay() === 0) linha.visto = 'DOMINGO';
+
+  return linha;
+}
+
+function gerarFolhaMensal(codigo, competencia) {
+  if (!codigo) return { ok: false, erro: 'Selecione um funcionário.' };
+
+  const funcionario = getFuncionarioPorCodigo(codigo);
+  if (!funcionario) return { ok: false, erro: 'Funcionário não encontrado.' };
+
+  const jornada = getJornada(funcionario.jornadaId) || {};
+  const periodo = parseCompetencia(competencia);
+  const ultimoDia = new Date(periodo.ano, periodo.mes, 0).getDate();
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName(ABA_REGISTRO);
+  const dados = aba.getDataRange().getValues();
+  const registrosPorData = {};
+
+  for (let i = 1; i < dados.length; i++) {
+    const linha = dados[i];
+    if (String(linha[1]) !== String(codigo)) continue;
+
+    const dataLinha = normalizarData(linha[3]);
+    const partes = dataLinha.split('/');
+    if (partes.length !== 3) continue;
+    if (Number(partes[1]) !== periodo.mes || Number(partes[2]) !== periodo.ano) continue;
+
+    if (!registrosPorData[dataLinha]) registrosPorData[dataLinha] = [];
+    registrosPorData[dataLinha].push({ tipo: linha[4], hora: normalizarHora(linha[5]) });
+  }
+
+  const dias = [];
+  for (let dia = 1; dia <= ultimoDia; dia++) {
+    const dataObj = new Date(periodo.ano, periodo.mes - 1, dia);
+    const dataStr = pad2(dia) + '/' + pad2(periodo.mes) + '/' + periodo.ano;
+    dias.push(montarLinhaFolhaDoDia(dataObj, dataStr, registrosPorData[dataStr] || []));
+  }
+
+  return {
+    ok: true,
+    folha: {
+      competencia: periodo.competencia,
+      funcionario: {
+        codigo: funcionario.codigo,
+        nome: funcionario.nome || '',
+        funcao: funcionario.funcao || '',
+        departamento: funcionario.departamento || '',
+        endereco: funcionario.endereco || '',
+        bairro: funcionario.bairro || '',
+        cidade: funcionario.cidade || '',
+        estado: funcionario.estado || '',
+        cep: funcionario.cep || '',
+        hrMes: funcionario.hrMes || '220,00',
+        ctps: funcionario.ctps || '',
+        cbo: funcionario.cbo || ''
+      },
+      empresa: EMPRESA_PADRAO,
+      horarios: [
+        {
+          dia: 'Segunda à Sexta',
+          expediente: (jornada.segSexEntrada || '08:00') + ' às ' + (jornada.segSexSaida || '18:00'),
+          intervalo: (jornada.segSexIntInicio || '12:00') + ' às ' + (jornada.segSexIntFim || '14:00')
+        },
+        {
+          dia: 'Sábado',
+          expediente: (jornada.sabEntrada || '08:00') + ' às ' + (jornada.sabSaida || '12:00'),
+          intervalo: 'Não Possui'
+        },
+        {
+          dia: 'Domingo',
+          expediente: 'Folga',
+          intervalo: ''
+        }
+      ],
+      dias: dias
+    }
+  };
 }
 
 // Lista registros de ponto, com filtro opcional por funcionário e/ou intervalo de datas (dd/MM/yyyy)

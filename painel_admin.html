@@ -190,16 +190,40 @@
   }
   .toast.erro-toast { background: var(--vermelho); }
   .carregando { text-align: center; color: var(--cinza-texto); padding: 20px; font-size: 14px; }
+  .folha-filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; }
+  .folha-filtros > div { flex: 1; min-width: 180px; }
+  .folha-acoes { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .folha-acoes button { padding: 10px 16px; }
+  .folha-preview {
+    background: #F4F7FB;
+    border: 1px solid var(--cinza-borda);
+    border-radius: 12px;
+    padding: 16px;
+    overflow: auto;
+  }
+  .folha-preview canvas {
+    display: block;
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    background: var(--branco);
+    box-shadow: 0 6px 24px rgba(26,58,107,0.10);
+  }
+  .folha-aviso { color: var(--cinza-texto); font-size: 13px; margin-bottom: 12px; line-height: 1.5; }
 </style>
 </head>
 <body>
 <div id="app"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script>
 // ====== CONFIGURAÇÃO ======
 // Use a MESMA URL do Apps Script já usada no app_ponto.html
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxYTQJHUZj4pIL8tUp-rUk05VrEd6ldVJVnOM9bBCDRz8PRN-L_tHoEIw2nptClR0Sf/exec';
 const AUTOLOGIN_STORAGE_KEY = 'obba_admin_autologin';
+const FOLHA_TEMPLATE_URL = './assets/folha-modelo.png';
+const FOLHA_CANVAS_WIDTH = 1191;
+const FOLHA_CANVAS_HEIGHT = 1684;
 
 // ====== ESTADO EM MEMÓRIA ======
 let sessaoAdmin = null;
@@ -217,6 +241,10 @@ let editandoId = null;
 
 let feriados = [];
 let intervaloAutoAtualizacao = null;
+let folhaFuncionario = '';
+let folhaCompetencia = obterCompetenciaAtual();
+let folhaDados = null;
+let folhaTemplateImagem = null;
 
 const app = document.getElementById('app');
 
@@ -324,6 +352,7 @@ function renderPainel() {
     <nav>
       <button data-aba="hoje" class="${abaAtiva === 'hoje' ? 'ativo' : ''}">Hoje</button>
       <button data-aba="registros" class="${abaAtiva === 'registros' ? 'ativo' : ''}">Registros</button>
+      <button data-aba="folha" class="${abaAtiva === 'folha' ? 'ativo' : ''}">Folha</button>
       <button data-aba="feriados" class="${abaAtiva === 'feriados' ? 'ativo' : ''}">Feriados</button>
     </nav>
     <main id="conteudo-aba"></main>
@@ -345,6 +374,7 @@ function renderPainel() {
 async function carregarAbaAtiva() {
   if (abaAtiva === 'hoje') await carregarStatusHoje();
   if (abaAtiva === 'registros') await buscarRegistros();
+  if (abaAtiva === 'folha') await carregarFolhaMensal();
   if (abaAtiva === 'feriados') await carregarFeriados();
   render();
 }
@@ -374,8 +404,10 @@ function renderConteudoAba() {
   if (!el) return;
   if (abaAtiva === 'hoje') el.innerHTML = htmlAbaHoje();
   if (abaAtiva === 'registros') el.innerHTML = htmlAbaRegistros();
+  if (abaAtiva === 'folha') el.innerHTML = htmlAbaFolha();
   if (abaAtiva === 'feriados') el.innerHTML = htmlAbaFeriados();
   ligarEventosDaAba();
+  if (abaAtiva === 'folha') setTimeout(renderizarPreviewFolha, 0);
 }
 
 // ---------- ABA HOJE ----------
@@ -414,7 +446,12 @@ function htmlAbaHoje() {
 async function carregarFuncionarios() {
   try {
     const resp = await chamarBackend({ action: 'listarFuncionarios' });
-    if (resp.ok) listaFuncionarios = resp.funcionarios;
+    if (resp.ok) {
+      listaFuncionarios = resp.funcionarios;
+      if (!folhaFuncionario && listaFuncionarios.length) {
+        folhaFuncionario = listaFuncionarios[0].codigo;
+      }
+    }
   } catch (err) { /* silencioso, não é crítico */ }
 }
 
@@ -486,6 +523,239 @@ function htmlAbaRegistros() {
     </div>`;
 }
 
+function obterCompetenciaAtual() {
+  const agora = new Date();
+  return `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatarCompetenciaTexto(valor) {
+  if (!valor || !/^\d{4}-\d{2}$/.test(valor)) return '';
+  return `${valor.slice(5, 7)}/${valor.slice(0, 4)}`;
+}
+
+function htmlAbaFolha() {
+  const opcoesFunc = listaFuncionarios.map(f => `<option value="${f.codigo}" ${folhaFuncionario === f.codigo ? 'selected' : ''}>${f.nome}</option>`).join('');
+  const temFolha = !!folhaDados;
+
+  return `
+    <div class="cartao">
+      <div class="folha-filtros">
+        <div>
+          <label for="folha-funcionario">Funcionário</label>
+          <select id="folha-funcionario"><option value="">Selecione</option>${opcoesFunc}</select>
+        </div>
+        <div>
+          <label for="folha-competencia">Competência</label>
+          <input type="month" id="folha-competencia" value="${folhaCompetencia}">
+        </div>
+        <button class="btn-primario" id="btn-gerar-folha">${carregando ? 'Gerando...' : 'Gerar folha'}</button>
+      </div>
+      <div class="folha-aviso">A folha usa o mesmo modelo em papel enviado. Os campos que ainda não existirem no cadastro do funcionário saem em branco.</div>
+      <div class="folha-acoes">
+        <button class="btn-secundario" id="btn-baixar-folha-png" ${temFolha ? '' : 'disabled'}>Baixar imagem</button>
+        <button class="btn-secundario" id="btn-baixar-folha-pdf" ${temFolha ? '' : 'disabled'}>Baixar PDF</button>
+      </div>
+      <div class="folha-preview">
+        ${temFolha ? '<canvas id="canvas-folha" width="1191" height="1684"></canvas>' : '<div class="vazio">Selecione o funcionário e a competência para gerar a folha de ponto.</div>'}
+      </div>
+    </div>`;
+}
+
+async function carregarTemplateFolha() {
+  if (folhaTemplateImagem) return folhaTemplateImagem;
+  folhaTemplateImagem = await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Não foi possível carregar o modelo da folha.'));
+    img.src = FOLHA_TEMPLATE_URL;
+  });
+  return folhaTemplateImagem;
+}
+
+async function carregarFolhaMensal() {
+  if (!listaFuncionarios.length) await carregarFuncionarios();
+  if (!folhaFuncionario && listaFuncionarios.length) folhaFuncionario = listaFuncionarios[0].codigo;
+  if (!folhaFuncionario) {
+    folhaDados = null;
+    return;
+  }
+
+  carregando = true;
+  render();
+  try {
+    const resp = await chamarBackend({
+      action: 'gerarFolhaMensal',
+      codigo: folhaFuncionario,
+      competencia: folhaCompetencia
+    });
+    if (resp.ok) folhaDados = resp.folha;
+    else {
+      folhaDados = null;
+      mostrarToast(resp.erro || 'Não foi possível gerar a folha.', true);
+    }
+  } catch (err) {
+    folhaDados = null;
+    mostrarToast('Erro ao gerar a folha mensal.', true);
+  }
+  carregando = false;
+}
+
+function valorTexto(valor) {
+  return String(valor || '').trim();
+}
+
+function preencherCaixa(ctx, x, y, w, h) {
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = '#111111';
+}
+
+function desenharTexto(ctx, texto, x, y, tamanho, alinhamento) {
+  ctx.save();
+  ctx.fillStyle = '#111111';
+  ctx.font = `${tamanho || 18}px Arial`;
+  ctx.textAlign = alinhamento || 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(valorTexto(texto), x, y);
+  ctx.restore();
+}
+
+function desenharTextoAjustado(ctx, texto, x, y, larguraMaxima, tamanhoBase, alinhamento) {
+  const valor = valorTexto(texto);
+  if (!valor) return;
+  let tamanho = tamanhoBase || 18;
+  ctx.save();
+  ctx.textAlign = alinhamento || 'left';
+  ctx.textBaseline = 'middle';
+  while (tamanho > 10) {
+    ctx.font = `${tamanho}px Arial`;
+    if (ctx.measureText(valor).width <= larguraMaxima) break;
+    tamanho -= 1;
+  }
+  ctx.fillStyle = '#111111';
+  ctx.fillText(valor, x, y);
+  ctx.restore();
+}
+
+function obterNomeArquivoFolha(extensao) {
+  const nome = valorTexto(folhaDados?.funcionario?.nome || 'funcionario')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+  return `folha_ponto_${nome || 'funcionario'}_${(folhaDados?.competencia || '').replace('/', '_')}.${extensao}`;
+}
+
+async function renderizarPreviewFolha() {
+  if (abaAtiva !== 'folha' || !folhaDados) return;
+  const canvas = document.getElementById('canvas-folha');
+  if (!canvas) return;
+  await desenharFolhaCanvas(canvas);
+}
+
+async function desenharFolhaCanvas(canvas) {
+  const template = await carregarTemplateFolha();
+  canvas.width = FOLHA_CANVAS_WIDTH;
+  canvas.height = FOLHA_CANVAS_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(template, 0, 0, FOLHA_CANVAS_WIDTH, FOLHA_CANVAS_HEIGHT);
+
+  const folha = folhaDados;
+  const funcionario = folha.funcionario || {};
+  const empresa = folha.empresa || {};
+
+  preencherCaixa(ctx, 1028, 78, 110, 18);
+  desenharTexto(ctx, folha.competencia, 1132, 86, 16, 'right');
+
+  preencherCaixa(ctx, 122, 175, 82, 20);
+  preencherCaixa(ctx, 385, 175, 315, 20);
+  preencherCaixa(ctx, 136, 230, 265, 20);
+  preencherCaixa(ctx, 213, 259, 140, 20);
+  preencherCaixa(ctx, 132, 287, 176, 20);
+  preencherCaixa(ctx, 427, 287, 130, 20);
+  preencherCaixa(ctx, 134, 315, 82, 18);
+  preencherCaixa(ctx, 134, 346, 82, 18);
+  preencherCaixa(ctx, 426, 315, 110, 18);
+  preencherCaixa(ctx, 426, 346, 145, 18);
+
+  desenharTexto(ctx, funcionario.codigo, 126, 185, 16);
+  desenharTextoAjustado(ctx, funcionario.nome, 388, 185, 300, 16);
+  desenharTextoAjustado(ctx, funcionario.funcao, 140, 239, 255, 16);
+  desenharTextoAjustado(ctx, funcionario.departamento, 216, 268, 132, 14);
+  desenharTextoAjustado(ctx, funcionario.endereco, 135, 297, 170, 13);
+  desenharTextoAjustado(ctx, funcionario.bairro, 430, 297, 125, 13);
+  desenharTexto(ctx, funcionario.cidade, 135, 325, 13);
+  desenharTexto(ctx, funcionario.estado, 429, 325, 13);
+  desenharTexto(ctx, funcionario.cep, 645, 325, 13);
+  desenharTexto(ctx, folha.competencia, 137, 323, 14);
+  desenharTexto(ctx, funcionario.hrMes || '220,00', 138, 353, 14);
+  desenharTexto(ctx, funcionario.ctps, 429, 323, 14);
+  desenharTexto(ctx, funcionario.cbo, 429, 353, 14);
+
+  const colunasEsquerda = [179, 257, 336, 414, 492, 570];
+  const colunasDireita = [703, 781, 860, 939, 1018, 1098];
+  const linhas = [611, 642, 676, 709, 743, 778, 812, 846, 880, 914, 948, 982, 1017, 1051, 1085, 1121, 1156];
+
+  for (let i = 0; i < 16; i++) {
+    const topo = linhas[i] + 1;
+    const altura = linhas[i + 1] - linhas[i] - 2;
+    preencherCaixa(ctx, 141, topo, 470, altura);
+    if (i < folha.dias.length) {
+      const dia = folha.dias[i];
+      desenharTexto(ctx, dia.entrada1, colunasEsquerda[0], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.saida1, colunasEsquerda[1], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.entrada2, colunasEsquerda[2], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.saida2, colunasEsquerda[3], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.extras, colunasEsquerda[4], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.visto, colunasEsquerda[5], topo + altura / 2, 13, 'center');
+    }
+  }
+
+  for (let i = 16; i < 31; i++) {
+    const indiceLinha = i - 16;
+    const topo = linhas[indiceLinha] + 1;
+    const altura = linhas[indiceLinha + 1] - linhas[indiceLinha] - 2;
+    preencherCaixa(ctx, 665, topo, 473, altura);
+    if (i < folha.dias.length) {
+      const dia = folha.dias[i];
+      desenharTexto(ctx, dia.entrada1, colunasDireita[0], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.saida1, colunasDireita[1], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.entrada2, colunasDireita[2], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.saida2, colunasDireita[3], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.extras, colunasDireita[4], topo + altura / 2, 14, 'center');
+      desenharTexto(ctx, dia.visto, colunasDireita[5], topo + altura / 2, 13, 'center');
+    }
+  }
+
+  return canvas;
+}
+
+async function baixarFolhaImagem() {
+  if (!folhaDados) return;
+  const canvas = document.getElementById('canvas-folha');
+  if (!canvas) return;
+  await desenharFolhaCanvas(canvas);
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = obterNomeArquivoFolha('png');
+  link.click();
+}
+
+async function baixarFolhaPdf() {
+  if (!folhaDados) return;
+  const canvas = document.getElementById('canvas-folha');
+  if (!canvas) return;
+  await desenharFolhaCanvas(canvas);
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    mostrarToast('Biblioteca de PDF não carregada.', true);
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'pt', [FOLHA_CANVAS_WIDTH, FOLHA_CANVAS_HEIGHT]);
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, FOLHA_CANVAS_WIDTH, FOLHA_CANVAS_HEIGHT);
+  pdf.save(obterNomeArquivoFolha('pdf'));
+}
+
 // ---------- ABA FERIADOS ----------
 async function carregarFeriados() {
   try {
@@ -537,6 +807,26 @@ function ligarEventosDaAba() {
     document.querySelectorAll('[data-cancelar]').forEach(b => b.addEventListener('click', () => { editandoId = null; render(); }));
     document.querySelectorAll('[data-salvar]').forEach(b => b.addEventListener('click', () => salvarEdicao(b.dataset.salvar)));
     document.querySelectorAll('[data-excluir]').forEach(b => b.addEventListener('click', () => excluirRegistroConfirma(b.dataset.excluir)));
+  }
+
+  if (abaAtiva === 'folha') {
+    const selFunc = document.getElementById('folha-funcionario');
+    if (selFunc) selFunc.addEventListener('change', () => { folhaFuncionario = selFunc.value; });
+
+    const inpCompetencia = document.getElementById('folha-competencia');
+    if (inpCompetencia) inpCompetencia.addEventListener('change', () => { folhaCompetencia = inpCompetencia.value || obterCompetenciaAtual(); });
+
+    const btnGerar = document.getElementById('btn-gerar-folha');
+    if (btnGerar) btnGerar.addEventListener('click', async () => {
+      await carregarFolhaMensal();
+      render();
+    });
+
+    const btnPng = document.getElementById('btn-baixar-folha-png');
+    if (btnPng) btnPng.addEventListener('click', baixarFolhaImagem);
+
+    const btnPdf = document.getElementById('btn-baixar-folha-pdf');
+    if (btnPdf) btnPdf.addEventListener('click', baixarFolhaPdf);
   }
 
   if (abaAtiva === 'feriados') {
