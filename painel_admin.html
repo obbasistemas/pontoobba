@@ -71,6 +71,11 @@
     font-size: 13px;
     cursor: pointer;
   }
+  .acoes-topo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
   nav {
     display: flex;
@@ -211,6 +216,7 @@ let registros = [];
 let editandoId = null;
 
 let feriados = [];
+let intervaloAutoAtualizacao = null;
 
 const app = document.getElementById('app');
 
@@ -310,7 +316,10 @@ function renderPainel() {
   app.innerHTML = `
     <header>
       ${htmlMarca('Administração')}
-      <button id="btn-sair">Sair</button>
+      <div class="acoes-topo">
+        <button id="btn-atualizar">Atualizar</button>
+        <button id="btn-sair">Sair</button>
+      </div>
     </header>
     <nav>
       <button data-aba="hoje" class="${abaAtiva === 'hoje' ? 'ativo' : ''}">Hoje</button>
@@ -319,8 +328,10 @@ function renderPainel() {
     </nav>
     <main id="conteudo-aba"></main>
   `;
+  document.getElementById('btn-atualizar').addEventListener('click', atualizarPainelAtual);
   document.getElementById('btn-sair').addEventListener('click', () => {
     sessionStorage.removeItem(AUTOLOGIN_STORAGE_KEY);
+    pararAutoAtualizacao();
     sessaoAdmin = null;
     render();
   });
@@ -328,6 +339,7 @@ function renderPainel() {
     btn.addEventListener('click', () => { abaAtiva = btn.dataset.aba; carregarAbaAtiva(); });
   });
   renderConteudoAba();
+  iniciarAutoAtualizacao();
 }
 
 async function carregarAbaAtiva() {
@@ -335,6 +347,26 @@ async function carregarAbaAtiva() {
   if (abaAtiva === 'registros') await buscarRegistros();
   if (abaAtiva === 'feriados') await carregarFeriados();
   render();
+}
+
+async function atualizarPainelAtual() {
+  await carregarAbaAtiva();
+  mostrarToast('Painel atualizado.');
+}
+
+function iniciarAutoAtualizacao() {
+  pararAutoAtualizacao();
+  intervaloAutoAtualizacao = setInterval(() => {
+    if (!sessaoAdmin || document.hidden) return;
+    carregarAbaAtiva();
+  }, 15000);
+}
+
+function pararAutoAtualizacao() {
+  if (intervaloAutoAtualizacao) {
+    clearInterval(intervaloAutoAtualizacao);
+    intervaloAutoAtualizacao = null;
+  }
 }
 
 function renderConteudoAba() {
@@ -581,6 +613,10 @@ async function iniciar() {
   const entrou = await tentarAutoLoginAdmin();
   if (!entrou) render();
 }
+
+window.addEventListener('focus', () => {
+  if (sessaoAdmin) carregarAbaAtiva();
+});
 
 iniciar();
 </script>
