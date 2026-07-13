@@ -34,6 +34,23 @@ const ABA_JORNADAS = 'Jornadas';
 const ABA_REGISTRO = 'RegistroPonto';
 const ABA_FERIADOS = 'Feriados';
 const ABA_ADMINISTRADORES = 'Administradores';
+const CABECALHOS_FUNCIONARIOS = [
+  'Codigo',
+  'Nome',
+  'PIN',
+  'Funcao',
+  'JornadaID',
+  'Status',
+  'Depto / Setor / Secao',
+  'Endereco',
+  'Bairro',
+  'Cidade',
+  'Estado',
+  'CEP',
+  'Hr/Mes',
+  'CTPS',
+  'CBO'
+];
 
 // ---------- SETUP ----------
 
@@ -41,7 +58,7 @@ function inicializarPlanilha() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   criarAbaSeNaoExiste(ss, ABA_FUNCIONARIOS,
-    ['Codigo', 'Nome', 'PIN', 'Funcao', 'JornadaID', 'Status']);
+    CABECALHOS_FUNCIONARIOS);
   criarAbaSeNaoExiste(ss, ABA_JORNADAS,
     ['JornadaID', 'Descricao', 'SegSex_Entrada', 'SegSex_IntervaloInicio', 'SegSex_IntervaloFim', 'SegSex_Saida', 'Sab_Entrada', 'Sab_Saida', 'ToleranciaMin']);
   criarAbaSeNaoExiste(ss, ABA_REGISTRO,
@@ -57,6 +74,8 @@ function inicializarPlanilha() {
     admins.appendRow(['admin', 'obba2026', 'Administração OBBA']);
   }
 
+  garantirColunasFuncionariosExtras();
+
   // Jornada padrão, igual ao horário do modelo em PDF
   const jornadas = ss.getSheetByName(ABA_JORNADAS);
   if (jornadas.getLastRow() < 2) {
@@ -66,7 +85,23 @@ function inicializarPlanilha() {
   // Funcionário de exemplo, com base no PDF enviado
   const funcionarios = ss.getSheetByName(ABA_FUNCIONARIOS);
   if (funcionarios.getLastRow() < 2) {
-    funcionarios.appendRow(['8', 'ENOQUE SANCHES BORGES', '1234', 'GERAL', 'PADRAO', 'Ativo']);
+    funcionarios.appendRow([
+      '8',
+      'ENOQUE SANCHES BORGES',
+      '1234',
+      'GERAL',
+      'PADRAO',
+      'Ativo',
+      '1 - GERAL',
+      'MA 703, 17',
+      'ARACAGY',
+      'SAO LUIS',
+      'MA',
+      '65-136-000',
+      '220,00',
+      '7666468/6287',
+      '410105,000000'
+    ]);
   }
 
   corrigirFormatoColunas();
@@ -93,6 +128,25 @@ function criarAbaSeNaoExiste(ss, nome, cabecalhos) {
     aba.getRange(1, 1, 1, cabecalhos.length).setFontWeight('bold');
   }
   return aba;
+}
+
+function garantirColunasFuncionariosExtras() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const aba = ss.getSheetByName(ABA_FUNCIONARIOS);
+  if (!aba) return;
+
+  const ultimaColuna = Math.max(aba.getLastColumn(), 1);
+  const cabecalhos = aba.getRange(1, 1, 1, ultimaColuna).getValues()[0];
+  const mapa = mapearCabecalhos(cabecalhos);
+
+  for (let i = 0; i < CABECALHOS_FUNCIONARIOS.length; i++) {
+    const nomeCabecalho = CABECALHOS_FUNCIONARIOS[i];
+    if (mapa[normalizarCabecalho(nomeCabecalho)] === undefined) {
+      aba.getRange(1, aba.getLastColumn() + 1).setValue(nomeCabecalho);
+    }
+  }
+
+  aba.getRange(1, 1, 1, aba.getLastColumn()).setFontWeight('bold');
 }
 
 // ---------- ENTRY POINTS ----------
